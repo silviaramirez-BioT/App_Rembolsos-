@@ -1,0 +1,12 @@
+# Dependencias del Gestor de Reembolsos
+# (solo lo directamente importado en el código fuente)
+
+# Procesamiento de PDFs CFDI
+pdfplumber>=0.11.0
+
+# OCR de tickets y comprobantes
+rapidocr-onnxruntime>=1.4.0
+onnxruntime>=1.18.0
+
+# Requerido por RapidOCR / OCR interno
+numpy>=1.24.0

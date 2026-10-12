@@ -1,0 +1,1495 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gestor de Reembolsos | Facturas, Tickets y Excel</title>
+  <meta name="description" content="Aplicación interactiva para procesar reembolsos semanales con OCR de tickets y extracción CFDI hacia plantillas Excel individuales.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      --bg-base: #0a0d14;
+      --bg-surface: #111624;
+      --bg-surface-elevated: #171e30;
+      --bg-card: rgba(23, 30, 48, 0.7);
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --border-focus: rgba(16, 185, 129, 0.5);
+
+      --emerald: #10b981;
+      --emerald-light: #34d399;
+      --emerald-dark: #059669;
+      --emerald-glow: rgba(16, 185, 129, 0.25);
+
+      --cyan: #0ea5e9;
+      --cyan-light: #38bdf8;
+      --amber: #f59e0b;
+      --amber-light: #fbbf24;
+      --indigo: #6366f1;
+      --indigo-light: #818cf8;
+      --rose: #f43f5e;
+
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --radius-xl: 24px;
+      
+      --shadow-card: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+      --shadow-glow: 0 0 25px var(--emerald-glow);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg-base);
+      color: var(--text-main);
+      min-height: 100vh;
+      line-height: 1.5;
+      background-image: 
+        radial-gradient(circle at 15% 10%, rgba(16, 185, 129, 0.08) 0%, transparent 40%),
+        radial-gradient(circle at 85% 20%, rgba(99, 102, 241, 0.08) 0%, transparent 45%),
+        radial-gradient(circle at 50% 90%, rgba(14, 165, 233, 0.05) 0%, transparent 50%);
+      background-attachment: fixed;
+      padding-bottom: 60px;
+    }
+
+    /* Contenedor principal */
+    .app-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 32px 24px;
+    }
+
+    /* Encabezado */
+    header.app-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 32px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .brand-section {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .brand-logo {
+      width: 52px;
+      height: 52px;
+      background: linear-gradient(135deg, #10b981 0%, #047857 100%);
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: var(--shadow-glow);
+      color: #ffffff;
+    }
+
+    .brand-logo svg {
+      width: 28px;
+      height: 28px;
+    }
+
+    .brand-titles h1 {
+      font-size: 1.6rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      background: linear-gradient(to right, #ffffff, #cbd5e1);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .brand-titles p {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-radius: 9999px;
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+      color: var(--emerald-light);
+      font-size: 0.82rem;
+      font-weight: 500;
+    }
+
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: var(--emerald);
+      box-shadow: 0 0 10px var(--emerald);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(1.2); }
+    }
+
+    /* Tarjeta General */
+    .glass-card {
+      background: var(--bg-card);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-xl);
+      padding: 28px;
+      margin-bottom: 28px;
+      box-shadow: var(--shadow-card);
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .card-header h2 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .step-number {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--emerald);
+      color: #0c0f17;
+      font-size: 0.85rem;
+      font-weight: 700;
+    }
+
+    /* Selector de Carpetas */
+    .folder-pickers-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 20px;
+    }
+
+    .browse-cta-box {
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(99, 102, 241, 0.05) 100%);
+      border: 1px dashed rgba(16, 185, 129, 0.4);
+      border-radius: var(--radius-lg);
+      padding: 30px 24px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      cursor: pointer;
+      transition: all 0.25s ease;
+    }
+
+    .browse-cta-box:hover {
+      border-color: var(--emerald);
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.16) 0%, rgba(99, 102, 241, 0.1) 100%);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px -5px rgba(16, 185, 129, 0.2);
+    }
+
+    .browse-icon-circle {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--emerald-light);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--emerald) 0%, var(--emerald-dark) 100%);
+      color: #ffffff;
+      border: none;
+      padding: 12px 26px;
+      border-radius: var(--radius-md);
+      font-weight: 600;
+      font-size: 0.95rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 4px 15px var(--emerald-glow);
+      transition: all 0.2s;
+    }
+
+    .btn-primary:hover {
+      filter: brightness(1.1);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px var(--emerald-glow);
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    .btn-secondary {
+      background: var(--bg-surface-elevated);
+      color: var(--text-main);
+      border: 1px solid var(--border-subtle);
+      padding: 10px 18px;
+      border-radius: var(--radius-md);
+      font-weight: 500;
+      font-size: 0.9rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    /* Acceso rápido a carpetas del proyecto */
+    .quick-folders-label {
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      margin: 18px 0 10px 0;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .quick-folders-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 12px;
+    }
+
+    .quick-folder-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .quick-folder-card:hover {
+      border-color: var(--emerald);
+      background: var(--bg-surface-elevated);
+      transform: translateY(-2px);
+    }
+
+    .quick-folder-card.active {
+      border-color: var(--emerald);
+      background: rgba(16, 185, 129, 0.1);
+      box-shadow: 0 0 15px rgba(16, 185, 129, 0.15);
+    }
+
+    .qf-icon {
+      color: var(--amber);
+    }
+
+    .qf-info {
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .qf-name {
+      font-weight: 600;
+      font-size: 0.95rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .qf-meta {
+      font-size: 0.78rem;
+      color: var(--text-dim);
+    }
+
+    /* Entrada de ruta manual */
+    .path-input-group {
+      display: flex;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .path-input-group input {
+      flex: 1;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 12px 16px;
+      color: #fff;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.88rem;
+      transition: border-color 0.2s;
+    }
+
+    .path-input-group input:focus {
+      outline: none;
+      border-color: var(--emerald);
+      box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+    }
+
+    /* Previsualización del Escaneo */
+    .scan-summary-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--bg-surface);
+      padding: 16px 20px;
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border-subtle);
+      margin-bottom: 24px;
+    }
+
+    .scan-path-display {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.92rem;
+    }
+
+    .scan-path-pill {
+      background: rgba(255, 255, 255, 0.05);
+      padding: 4px 10px;
+      border-radius: var(--radius-sm);
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text-main);
+      font-size: 0.85rem;
+    }
+
+    .workers-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .worker-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+
+    .worker-card:hover {
+      border-color: rgba(255, 255, 255, 0.2);
+      transform: translateY(-2px);
+    }
+
+    .worker-card-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .worker-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--indigo) 0%, var(--indigo-light) 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      color: #fff;
+      font-size: 1rem;
+    }
+
+    .worker-name {
+      font-size: 1.05rem;
+      font-weight: 600;
+    }
+
+    .worker-stats-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .count-pill {
+      font-size: 0.78rem;
+      font-weight: 500;
+      padding: 4px 10px;
+      border-radius: 6px;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .pill-xml {
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--emerald-light);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+    }
+
+    .pill-pdf {
+      background: rgba(14, 165, 233, 0.15);
+      color: var(--cyan-light);
+      border: 1px solid rgba(14, 165, 233, 0.25);
+    }
+
+    .pill-img {
+      background: rgba(245, 158, 11, 0.15);
+      color: var(--amber-light);
+      border: 1px solid rgba(245, 158, 11, 0.25);
+    }
+
+    .pill-excel {
+      background: rgba(99, 102, 241, 0.15);
+      color: var(--indigo-light);
+      border: 1px solid rgba(99, 102, 241, 0.25);
+      font-size: 0.75rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
+
+    /* Barra de Acción Principal */
+    .cta-process-banner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(5, 150, 105, 0.08) 100%);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      padding: 20px 24px;
+      border-radius: var(--radius-lg);
+      gap: 16px;
+    }
+
+    .cta-process-text h3 {
+      font-size: 1.15rem;
+      font-weight: 600;
+      color: #ffffff;
+    }
+
+    .cta-process-text p {
+      font-size: 0.88rem;
+      color: var(--text-muted);
+    }
+
+    .btn-large {
+      padding: 16px 36px;
+      font-size: 1.05rem;
+      border-radius: var(--radius-md);
+      font-weight: 700;
+    }
+
+    /* Consola y Terminal en Vivo */
+    .terminal-container {
+      background: #090c14;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6);
+    }
+
+    .terminal-topbar {
+      background: #111624;
+      padding: 10px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .window-controls {
+      display: flex;
+      gap: 8px;
+    }
+
+    .win-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+
+    .win-red { background-color: #ef4444; }
+    .win-yellow { background-color: #f59e0b; }
+    .win-green { background-color: #10b981; }
+
+    .terminal-title {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .terminal-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn-icon-tiny {
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--text-muted);
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-icon-tiny:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: #fff;
+    }
+
+    .terminal-body {
+      height: 320px;
+      overflow-y: auto;
+      padding: 16px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.84rem;
+      color: #cbd5e1;
+      line-height: 1.6;
+    }
+
+    .terminal-line {
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    .log-badge-xml { color: var(--emerald-light); font-weight: 600; }
+    .log-badge-pdf { color: var(--cyan-light); font-weight: 600; }
+    .log-badge-ticket { color: var(--amber-light); font-weight: 600; }
+    .log-badge-worker { color: #818cf8; font-weight: 700; }
+    .log-badge-success { color: #34d399; font-weight: 700; }
+    .log-badge-money { color: #fef08a; font-weight: 600; }
+
+    /* Barra de Progreso */
+    .progress-bar-container {
+      margin-top: 14px;
+      background: rgba(255, 255, 255, 0.06);
+      border-radius: 999px;
+      height: 8px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--emerald) 0%, var(--cyan) 100%);
+      width: 0%;
+      border-radius: 999px;
+      transition: width 0.3s ease;
+    }
+
+    .progress-bar-fill.animated-stripes {
+      background-image: linear-gradient(
+        45deg,
+        rgba(255, 255, 255, 0.2) 25%,
+        transparent 25%,
+        transparent 50%,
+        rgba(255, 255, 255, 0.2) 50%,
+        rgba(255, 255, 255, 0.2) 75%,
+        transparent 75%,
+        transparent
+      );
+      background-size: 30px 30px;
+      animation: progress-stripes 1.2s linear infinite;
+    }
+
+    @keyframes progress-stripes {
+      0% { background-position: 0 0; }
+      100% { background-position: 30px 0; }
+    }
+
+    /* Métricas Finales */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .metric-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .metric-title {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .metric-value {
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .metric-value.highlight-money {
+      background: linear-gradient(to right, #34d399, #10b981);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    /* Tabla de Resultados por Trabajador */
+    .results-accordion {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .worker-result-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      transition: border-color 0.2s;
+    }
+
+    .worker-result-card:hover {
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .worker-result-header {
+      padding: 18px 24px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      cursor: pointer;
+      user-select: none;
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .worker-result-left {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .worker-result-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .worker-result-total {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--emerald-light);
+      margin-right: 8px;
+    }
+
+    .items-table-wrapper {
+      padding: 0 24px 20px 24px;
+      overflow-x: auto;
+    }
+
+    .items-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+      text-align: left;
+    }
+
+    .items-table th {
+      color: var(--text-dim);
+      font-weight: 500;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .items-table td {
+      padding: 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      color: var(--text-main);
+    }
+
+    .badge-origin {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 0.74rem;
+      font-weight: 600;
+    }
+
+    .origin-xml { background: rgba(16, 185, 129, 0.15); color: var(--emerald-light); }
+    .origin-pdf { background: rgba(14, 165, 233, 0.15); color: var(--cyan-light); }
+    .origin-ticket { background: rgba(245, 158, 11, 0.15); color: var(--amber-light); }
+
+    /* Toasts */
+    .toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 1000;
+    }
+
+    .toast {
+      background: var(--bg-surface-elevated);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: var(--radius-md);
+      padding: 12px 18px;
+      color: #fff;
+      font-size: 0.9rem;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      animation: slide-in 0.3s ease;
+    }
+
+    @keyframes slide-in {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
+    /* Utilidades */
+    .hidden { display: none !important; }
+    .text-emerald { color: var(--emerald-light); }
+    .text-dim { color: var(--text-dim); }
+
+    /* Spinner */
+    .spinner {
+      width: 18px;
+      height: 18px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @media (max-width: 768px) {
+      .app-header { flex-direction: column; align-items: flex-start; gap: 16px; }
+      .cta-process-banner { flex-direction: column; align-items: flex-start; }
+      .btn-large { width: 100%; justify-content: center; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="app-container">
+    
+    <!-- Encabezado Principal -->
+    <header class="app-header">
+      <div class="brand-section">
+        <div class="brand-logo" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="16" y1="13" x2="8" y2="13"></line>
+            <line x1="16" y1="17" x2="8" y2="17"></line>
+            <polyline points="10 9 9 9 8 9"></polyline>
+          </svg>
+        </div>
+        <div class="brand-titles">
+          <h1>Gestor Inteligente de Reembolsos</h1>
+          <p>Facturas XML, PDFs CFDI y Tickets con llenado automático de Excel por trabajador</p>
+        </div>
+      </div>
+
+      <div class="status-badge" id="systemStatusBadge">
+        <span class="pulse-dot"></span>
+        <span id="systemStatusText">Sistema Listo</span>
+      </div>
+    </header>
+
+    <!-- PASO 1: Selección de Carpeta -->
+    <section class="glass-card" id="stepFolderSection">
+      <div class="card-header">
+        <h2>
+          <span class="step-number">1</span>
+          Seleccionar Carpeta a Trabajar
+        </h2>
+        <span class="text-dim" style="font-size: 0.85rem;">Puedes elegir una semana completa o una carpeta individual</span>
+      </div>
+
+      <div class="folder-pickers-grid">
+        <!-- Botón de diálogo nativo del sistema -->
+        <div class="browse-cta-box" id="btnBrowseNative" role="button" tabindex="0" title="Abre el selector de carpetas de tu sistema operativo">
+          <div class="browse-icon-circle">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+            </svg>
+          </div>
+          <div>
+            <h3 style="font-size: 1.15rem; font-weight: 600;">Explorar Carpeta en tu Computadora</h3>
+            <p style="color: var(--text-muted); font-size: 0.88rem; margin-top: 4px;">
+              Haz clic para abrir el selector nativo y elegir cualquier carpeta de comprobantes
+            </p>
+          </div>
+          <button type="button" class="btn-primary" style="pointer-events: none;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-6l-2-2H5a2 2 0 0 0-2 2z"></path>
+            </svg>
+            Seleccionar Carpeta
+          </button>
+        </div>
+
+        <!-- Carpetas rápidas detectadas en el espacio de trabajo -->
+        <div>
+          <div class="quick-folders-label">Carpetas detectadas en el proyecto:</div>
+          <div class="quick-folders-grid" id="quickFoldersContainer">
+            <!-- Cargadas dinámicamente vía API -->
+            <div class="quick-folder-card" style="opacity: 0.5;">
+              <span class="qf-icon">📁</span>
+              <div class="qf-info">
+                <div class="qf-name">Buscando carpetas...</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Entrada manual de ruta -->
+        <div>
+          <div class="quick-folders-label">O escribe la ruta manualmente:</div>
+          <div class="path-input-group">
+            <input type="text" id="manualPathInput" placeholder="/home/usuario/.../W33 Agosto 16" autocomplete="off">
+            <button type="button" class="btn-secondary" id="btnScanManual">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+              Escanear
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PASO 2: Previsualización de Trabajadores y Archivos -->
+    <section class="glass-card hidden" id="stepPreviewSection">
+      <div class="card-header">
+        <h2>
+          <span class="step-number">2</span>
+          Comprobantes y Trabajadores Detectados
+        </h2>
+        <button type="button" class="btn-secondary" id="btnRescan" style="padding: 6px 14px; font-size: 0.85rem;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+          </svg>
+          Actualizar Escaneo
+        </button>
+      </div>
+
+      <!-- Barra de resumen de escaneo -->
+      <div class="scan-summary-bar">
+        <div class="scan-path-display">
+          <span style="color: var(--text-dim);">Carpeta seleccionada:</span>
+          <span class="scan-path-pill" id="scanFolderLabel">-</span>
+        </div>
+        <div style="display: flex; gap: 12px; align-items: center; font-size: 0.88rem;">
+          <div><strong class="text-emerald" id="scanTotalWorkers">0</strong> trabajadores</div>
+          <span style="color: var(--border-subtle);">|</span>
+          <div><strong class="text-emerald" id="scanTotalFiles">0</strong> comprobantes en total</div>
+          <span style="color: var(--border-subtle);">|</span>
+          <div id="scanTemplateStatus">Plantilla base: verificando...</div>
+        </div>
+      </div>
+
+      <!-- Tarjetas de trabajadores detectados -->
+      <div class="workers-grid" id="workersGridContainer">
+        <!-- Renderizado dinámicamente -->
+      </div>
+
+      <!-- Botón principal de procesamiento -->
+      <div class="cta-process-banner">
+        <div class="cta-process-text">
+          <h3>¿Listo para generar los archivos de reembolso?</h3>
+          <p>Se leerán los XMLs, PDFs de facturas e imágenes de tickets con OCR y se actualizará el Excel de cada trabajador.</p>
+        </div>
+        <button type="button" class="btn-primary btn-large" id="btnStartProcessing">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="5 3 19 12 5 21 5 3"></polygon>
+          </svg>
+          Iniciar Procesamiento
+        </button>
+      </div>
+    </section>
+
+    <!-- PASO 3: Consola y Progreso en Tiempo Real -->
+    <section class="glass-card hidden" id="stepRunningSection">
+      <div class="card-header">
+        <h2>
+          <span class="step-number" style="background: var(--amber);">3</span>
+          Ejecución en Tiempo Real
+        </h2>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div class="spinner" id="runningSpinner"></div>
+          <span id="runningProgressText" style="font-size: 0.9rem; font-weight: 500; color: var(--amber-light);">Procesando comprobantes...</span>
+        </div>
+      </div>
+
+      <!-- Barra de progreso -->
+      <div class="progress-bar-container">
+        <div class="progress-bar-fill animated-stripes" id="progressBarFill" style="width: 100%;"></div>
+      </div>
+
+      <!-- Terminal macOS style -->
+      <div class="terminal-container" style="margin-top: 18px;">
+        <div class="terminal-topbar">
+          <div class="window-controls">
+            <span class="win-dot win-red"></span>
+            <span class="win-dot win-yellow"></span>
+            <span class="win-dot win-green"></span>
+          </div>
+          <div class="terminal-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="4 17 10 11 4 5"></polyline>
+              <line x1="12" y1="19" x2="20" y2="19"></line>
+            </svg>
+            Terminal de Extracción OCR & XML
+          </div>
+          <div class="terminal-actions">
+            <button type="button" class="btn-icon-tiny" id="btnCopyLogs" title="Copiar logs al portapapeles">Copiar</button>
+            <button type="button" class="btn-icon-tiny" id="btnClearLogs" title="Limpiar pantalla">Limpiar</button>
+          </div>
+        </div>
+
+        <div class="terminal-body" id="terminalBody">
+          <!-- Salida de log en vivo -->
+        </div>
+      </div>
+    </section>
+
+    <!-- PASO 4: Resultados y Descarga de Excel -->
+    <section class="glass-card hidden" id="stepResultsSection">
+      <div class="card-header">
+        <h2>
+          <span class="step-number" style="background: var(--emerald);">✓</span>
+          Resultados del Procesamiento
+        </h2>
+        <button type="button" class="btn-secondary" id="btnProcessAnother">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+          </svg>
+          Procesar Otra Carpeta
+        </button>
+      </div>
+
+      <!-- Métricas Globales -->
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <span class="metric-title">Monto Total Reembolsos</span>
+          <span class="metric-value highlight-money" id="resTotalMonto">$0.00</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-title">Comprobantes Registrados</span>
+          <span class="metric-value" id="resTotalComprobantes">0</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-title">Trabajadores Procesados</span>
+          <span class="metric-value" id="resTotalTrabajadores">0</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-title">Tiempo de Proceso</span>
+          <span class="metric-value" id="resDuration" style="font-size: 1.5rem; color: var(--cyan-light);">0s</span>
+        </div>
+      </div>
+
+      <!-- Lista de trabajadores con sus Excels e items desglosados -->
+      <h3 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 16px;">Detalle por Trabajador y Descargas de Excel:</h3>
+      <div class="results-accordion" id="resultsAccordionContainer">
+        <!-- Renderizado dinámicamente -->
+      </div>
+    </section>
+
+  </div>
+
+  <!-- Contenedor de notificaciones flotantes -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script>
+    // Estado de la interfaz
+    let currentSelectedFolder = "";
+    let pollingInterval = null;
+    let autoScrollTerminal = true;
+
+    // Elementos DOM principales
+    const btnBrowseNative = document.getElementById('btnBrowseNative');
+    const quickFoldersContainer = document.getElementById('quickFoldersContainer');
+    const manualPathInput = document.getElementById('manualPathInput');
+    const btnScanManual = document.getElementById('btnScanManual');
+    const btnRescan = document.getElementById('btnRescan');
+
+    const stepPreviewSection = document.getElementById('stepPreviewSection');
+    const scanFolderLabel = document.getElementById('scanFolderLabel');
+    const scanTotalWorkers = document.getElementById('scanTotalWorkers');
+    const scanTotalFiles = document.getElementById('scanTotalFiles');
+    const scanTemplateStatus = document.getElementById('scanTemplateStatus');
+    const workersGridContainer = document.getElementById('workersGridContainer');
+    const btnStartProcessing = document.getElementById('btnStartProcessing');
+
+    const stepRunningSection = document.getElementById('stepRunningSection');
+    const runningSpinner = document.getElementById('runningSpinner');
+    const runningProgressText = document.getElementById('runningProgressText');
+    const terminalBody = document.getElementById('terminalBody');
+    const btnCopyLogs = document.getElementById('btnCopyLogs');
+    const btnClearLogs = document.getElementById('btnClearLogs');
+
+    const stepResultsSection = document.getElementById('stepResultsSection');
+    const resTotalMonto = document.getElementById('resTotalMonto');
+    const resTotalComprobantes = document.getElementById('resTotalComprobantes');
+    const resTotalTrabajadores = document.getElementById('resTotalTrabajadores');
+    const resDuration = document.getElementById('resDuration');
+    const resultsAccordionContainer = document.getElementById('resultsAccordionContainer');
+    const btnProcessAnother = document.getElementById('btnProcessAnother');
+
+    // Notificaciones Toast
+    function showToast(message, type = 'info') {
+      const toast = document.createElement('div');
+      toast.className = 'toast';
+      const icon = type === 'success' ? '✓' : type === 'error' ? '✕' : 'ℹ';
+      toast.innerHTML = `<span style="font-weight: bold; color: ${type === 'success' ? 'var(--emerald)' : type === 'error' ? 'var(--rose)' : 'var(--cyan)'};">${icon}</span> <span>${message}</span>`;
+      document.getElementById('toastContainer').appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(10px)';
+        toast.style.transition = 'all 0.3s';
+        setTimeout(() => toast.remove(), 300);
+      }, 4000);
+    }
+
+    // Cargar carpetas del espacio de trabajo
+    async function loadWorkspaceFolders() {
+      try {
+        const res = await fetch('/api/workspace-folders');
+        const data = await res.json();
+        if (data.ok && data.folders.length > 0) {
+          quickFoldersContainer.innerHTML = '';
+          data.folders.forEach(f => {
+            const card = document.createElement('div');
+            card.className = 'quick-folder-card';
+            card.innerHTML = `
+              <span class="qf-icon">📁</span>
+              <div class="qf-info">
+                <div class="qf-name" title="${f.nombre}">${f.nombre}</div>
+                <div class="qf-meta">${f.subcarpetas} subcarpetas • ${f.fecha_modificacion}</div>
+              </div>
+            `;
+            card.onclick = () => selectFolder(f.ruta, card);
+            quickFoldersContainer.appendChild(card);
+          });
+        } else {
+          quickFoldersContainer.innerHTML = '<div style="color: var(--text-dim); font-size: 0.9rem;">No se encontraron carpetas directas en el directorio.</div>';
+        }
+      } catch (err) {
+        console.error("Error al listar carpetas:", err);
+      }
+    }
+
+    // Diálogo nativo de selección de carpetas con Zenity
+    btnBrowseNative.addEventListener('click', async () => {
+      btnBrowseNative.style.opacity = '0.6';
+      showToast("Abriendo selector de carpetas del sistema...", "info");
+      try {
+        const res = await fetch('/api/browse-folder', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ initial_dir: currentSelectedFolder || '' })
+        });
+        const data = await res.json();
+        if (data.ok && data.path) {
+          selectFolder(data.path);
+        } else if (!data.cancelled) {
+          showToast(data.error || "No se seleccionó ninguna carpeta", "info");
+        }
+      } catch (err) {
+        showToast("Error al invocar el selector: " + err.message, "error");
+      } finally {
+        btnBrowseNative.style.opacity = '1';
+      }
+    });
+
+    // Escaneo manual
+    btnScanManual.addEventListener('click', () => {
+      const p = manualPathInput.value.trim();
+      if (p) selectFolder(p);
+      else showToast("Escribe una ruta válida de carpeta", "error");
+    });
+
+    manualPathInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') btnScanManual.click();
+    });
+
+    btnRescan.addEventListener('click', () => {
+      if (currentSelectedFolder) selectFolder(currentSelectedFolder);
+    });
+
+    // Seleccionar y escanear carpeta
+    async function selectFolder(folderPath, activeElement = null) {
+      currentSelectedFolder = folderPath;
+      manualPathInput.value = folderPath;
+
+      // Marcar activa la tarjeta correspondiente
+      document.querySelectorAll('.quick-folder-card').forEach(c => c.classList.remove('active'));
+      if (activeElement) activeElement.classList.add('active');
+
+      showToast(`Escaneando: ${folderPath.split('/').pop()}`, "info");
+
+      try {
+        const res = await fetch('/api/scan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ folder_path: folderPath })
+        });
+        const data = await res.json();
+
+        if (!data.ok) {
+          showToast(data.error || "No se pudo escanear la carpeta", "error");
+          return;
+        }
+
+        renderScanPreview(data);
+      } catch (err) {
+        showToast("Error de conexión al escanear: " + err.message, "error");
+      }
+    }
+
+    // Renderizar previsualización de trabajadores
+    function renderScanPreview(data) {
+      stepPreviewSection.classList.remove('hidden');
+      stepPreviewSection.scrollIntoView({ behavior: 'smooth' });
+
+      scanFolderLabel.textContent = data.nombre_carpeta;
+      scanTotalWorkers.textContent = data.total_trabajadores;
+      scanTotalFiles.textContent = data.total_archivos;
+
+      if (data.plantilla_encontrada) {
+        scanTemplateStatus.innerHTML = `Plantilla base: <strong class="text-emerald">${data.plantilla_encontrada}</strong>`;
+      } else {
+        scanTemplateStatus.innerHTML = `<span style="color: var(--amber);">Plantilla base: usando estándar</span>`;
+      }
+
+      workersGridContainer.innerHTML = '';
+      data.trabajadores.forEach(w => {
+        const card = document.createElement('div');
+        card.className = 'worker-card';
+        card.innerHTML = `
+          <div class="worker-card-header">
+            <div class="worker-avatar">${w.nombre.charAt(0).toUpperCase()}</div>
+            <div>
+              <div class="worker-name">${w.nombre}</div>
+              <div style="font-size: 0.78rem; color: var(--text-dim);">${w.xmls_count + w.pdfs_count + w.imgs_count} comprobantes</div>
+            </div>
+          </div>
+          <div class="worker-stats-pills">
+            <span class="count-pill pill-xml" title="Facturas electrónicas XML">XML: ${w.xmls_count}</span>
+            <span class="count-pill pill-pdf" title="Facturas en PDF">PDF: ${w.pdfs_count}</span>
+            <span class="count-pill pill-img" title="Fotos y reportes de Tickets">Tickets: ${w.imgs_count}</span>
+            ${w.excel_detectado 
+              ? `<span class="count-pill pill-excel" title="Archivo Excel detectado">📊 ${w.excel_detectado}</span>`
+              : `<span class="count-pill" style="background: rgba(255,255,255,0.05); color: var(--text-dim);">Nuevo Excel</span>`}
+          </div>
+        `;
+        workersGridContainer.appendChild(card);
+      });
+    }
+
+    // Iniciar Procesamiento
+    btnStartProcessing.addEventListener('click', async () => {
+      if (!currentSelectedFolder) {
+        showToast("Selecciona una carpeta primero", "error");
+        return;
+      }
+
+      btnStartProcessing.disabled = true;
+      stepRunningSection.classList.remove('hidden');
+      stepResultsSection.classList.add('hidden');
+      terminalBody.innerHTML = '<div class="terminal-line text-dim">Iniciando motor de reembolsos...</div>';
+      stepRunningSection.scrollIntoView({ behavior: 'smooth' });
+
+      try {
+        const res = await fetch('/api/process', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ folder_path: currentSelectedFolder })
+        });
+        const data = await res.json();
+
+        if (!data.ok) {
+          showToast(data.error || "No se pudo iniciar el proceso", "error");
+          btnStartProcessing.disabled = false;
+          return;
+        }
+
+        showToast("Procesamiento en marcha...", "info");
+        startStatusPolling();
+      } catch (err) {
+        showToast("Error al procesar: " + err.message, "error");
+        btnStartProcessing.disabled = false;
+      }
+    });
+
+    // Sondeo de estado y actualización de terminal en vivo
+    function startStatusPolling() {
+      if (pollingInterval) clearInterval(pollingInterval);
+
+      pollingInterval = setInterval(async () => {
+        try {
+          const res = await fetch('/api/status');
+          const data = await res.json();
+
+          // Actualizar texto de estado
+          runningProgressText.textContent = data.progress_msg || "Procesando...";
+
+          // Renderizar logs formateados
+          renderLogs(data.logs);
+
+          if (data.status === 'completed') {
+            clearInterval(pollingInterval);
+            runningSpinner.classList.add('hidden');
+            runningProgressText.textContent = "¡Completado con éxito!";
+            runningProgressText.style.color = "var(--emerald-light)";
+            btnStartProcessing.disabled = false;
+            showToast("¡Proceso completado con éxito!", "success");
+            renderResults(data.results, data.duration);
+          } else if (data.status === 'error') {
+            clearInterval(pollingInterval);
+            runningSpinner.classList.add('hidden');
+            runningProgressText.textContent = "Ocurrió un error";
+            runningProgressText.style.color = "var(--rose)";
+            btnStartProcessing.disabled = false;
+            showToast("Error en el proceso: " + data.error, "error");
+          }
+        } catch (err) {
+          console.error("Error al consultar estado:", err);
+        }
+      }, 500);
+    }
+
+    // Formatear líneas de logs para dar formato visual premium en la terminal
+    function renderLogs(logs) {
+      if (!logs || logs.length === 0) return;
+      terminalBody.innerHTML = '';
+      
+      logs.forEach(log => {
+        const line = document.createElement('div');
+        line.className = 'terminal-line';
+        const txt = log.text;
+
+        if (txt.includes('[XML]')) {
+          line.innerHTML = formatLogLine(txt, 'log-badge-xml');
+        } else if (txt.includes('[PDF_CFDI]')) {
+          line.innerHTML = formatLogLine(txt, 'log-badge-pdf');
+        } else if (txt.includes('[TICKET]')) {
+          line.innerHTML = formatLogLine(txt, 'log-badge-ticket');
+        } else if (txt.startsWith('Trabajador:')) {
+          line.innerHTML = `<span class="log-badge-worker">▶ ${escapeHtml(txt)}</span>`;
+        } else if (txt.includes('PROCESO COMPLETADO EXITOSAMENTE')) {
+          line.innerHTML = `<span class="log-badge-success">${escapeHtml(txt)}</span>`;
+        } else {
+          line.textContent = txt;
+        }
+
+        terminalBody.appendChild(line);
+      });
+
+      if (autoScrollTerminal) {
+        terminalBody.scrollTop = terminalBody.scrollHeight;
+      }
+    }
+
+    function formatLogLine(text, badgeClass) {
+      return text
+        .replace(/(\[[A-Z_]+\])/g, `<span class="${badgeClass}">$1</span>`)
+        .replace(/(\$\s*[0-9,]+\.[0-9]{2})/g, `<span class="log-badge-money">$1</span>`);
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Copiar logs
+    btnCopyLogs.addEventListener('click', () => {
+      const text = terminalBody.innerText;
+      navigator.clipboard.writeText(text).then(() => showToast("Logs copiados al portapapeles", "success"));
+    });
+
+    btnClearLogs.addEventListener('click', () => {
+      terminalBody.innerHTML = '';
+    });
+
+    // Renderizar Resultados
+    function renderResults(results, duration) {
+      if (!results) return;
+      stepResultsSection.classList.remove('hidden');
+      stepResultsSection.scrollIntoView({ behavior: 'smooth' });
+
+      resTotalMonto.textContent = `$${results.total_monto.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      resTotalComprobantes.textContent = results.total_comprobantes;
+      resTotalTrabajadores.textContent = results.total_trabajadores;
+      resDuration.textContent = `${duration || 0}s`;
+
+      resultsAccordionContainer.innerHTML = '';
+
+      results.trabajadores.forEach(w => {
+        const card = document.createElement('div');
+        card.className = 'worker-result-card';
+
+        // Cabecera del trabajador
+        const header = document.createElement('div');
+        header.className = 'worker-result-header';
+        header.innerHTML = `
+          <div class="worker-result-left">
+            <div class="worker-avatar">${w.nombre.charAt(0).toUpperCase()}</div>
+            <div>
+              <div style="font-size: 1.1rem; font-weight: 700;">${w.nombre}</div>
+              <div style="font-size: 0.8rem; color: var(--text-dim);">
+                ${w.items.length} comprobantes registrados • 📊 ${w.excel_nombre}
+              </div>
+            </div>
+          </div>
+          <div class="worker-result-right">
+            <div class="worker-result-total">$${w.total_monto.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+            
+            <!-- Botón Descargar Excel -->
+            <a href="/api/download?file=${encodeURIComponent(w.excel_path)}" class="btn-primary" style="padding: 8px 14px; font-size: 0.85rem;" title="Descargar archivo Excel a tu equipo" download>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              Descargar Excel
+            </a>
+
+            <!-- Botón Abrir Carpeta -->
+            <button type="button" class="btn-secondary" style="padding: 8px 12px; font-size: 0.85rem;" onclick="openSystemFolder('${w.carpeta_path.replace(/'/g, "\\'")}')" title="Abrir carpeta en el explorador de archivos">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+              </svg>
+              Carpeta
+            </button>
+          </div>
+        `;
+
+        // Tabla de comprobantes individuales
+        const tableWrapper = document.createElement('div');
+        tableWrapper.className = 'items-table-wrapper';
+
+        if (w.items.length > 0) {
+          let rowsHtml = '';
+          w.items.forEach(it => {
+            const badgeClass = it.origen === 'xml' ? 'origin-xml' : it.origen === 'pdf_cfdi' ? 'origin-pdf' : 'origin-ticket';
+            const badgeText = it.origen.toUpperCase();
+            rowsHtml += `
+              <tr>
+                <td><span class="badge-origin ${badgeClass}">${badgeText}</span></td>
+                <td>${it.fecha || '<span class="text-dim">S/F</span>'}</td>
+                <td><strong>$${it.monto.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></td>
+                <td>${escapeHtml(it.proveedor || '-')}</td>
+                <td><code>${escapeHtml(it.folio || '-')}</code></td>
+              </tr>
+            `;
+          });
+
+          tableWrapper.innerHTML = `
+            <table class="items-table">
+              <thead>
+                <tr>
+                  <th>Tipo</th>
+                  <th>Fecha</th>
+                  <th>Monto</th>
+                  <th>Proveedor / Emisor</th>
+                  <th>Folio / Serie</th>
+                </tr>
+              </thead>
+              <tbody>${rowsHtml}</tbody>
+            </table>
+          `;
+        } else {
+          tableWrapper.innerHTML = '<div style="padding: 12px; color: var(--text-dim); font-size: 0.88rem;">No se encontraron comprobantes para este trabajador.</div>';
+        }
+
+        card.appendChild(header);
+        card.appendChild(tableWrapper);
+        resultsAccordionContainer.appendChild(card);
+      });
+    }
+
+    // Acciones de sistema operativo
+    async function openSystemFolder(folderPath) {
+      try {
+        const res = await fetch('/api/open-folder', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ path: folderPath })
+        });
+        const d = await res.json();
+        if (d.ok) showToast("Carpeta abierta en tu explorador", "success");
+        else showToast("No se pudo abrir la carpeta", "error");
+      } catch (e) {
+        showToast("Error: " + e.message, "error");
+      }
+    }
+
+    btnProcessAnother.addEventListener('click', () => {
+      stepResultsSection.classList.add('hidden');
+      stepRunningSection.classList.add('hidden');
+      stepPreviewSection.classList.add('hidden');
+      document.getElementById('stepFolderSection').scrollIntoView({ behavior: 'smooth' });
+    });
+
+    // Iniciar al cargar
+    window.addEventListener('DOMContentLoaded', () => {
+      loadWorkspaceFolders();
+    });
+  </script>
+</body>
+</html>
